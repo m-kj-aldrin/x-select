@@ -14,18 +14,16 @@ customSelectTemplate.innerHTML = `
     :host{
         display: block;
         box-sizing: border-box;
-        cursor: pointer;
         user-select: none;
         -webkit-user-select: none;
-
         max-width: max-content;
-
     }
     :host([open]) #list{
         opacity: 1;
         pointer-events: unset;
     }
     #selected{
+        cursor: pointer;
         border: 1px currentColor solid;
         padding: 4px;
     }
@@ -44,10 +42,10 @@ customSelectTemplate.innerHTML = `
         border: 1px currentColor solid;
     } 
     ::slotted([selected]){
-        border-bottom: 1px currentColor solid;
+        filter: invert(1);
     }
 </style>
-<div id="selected"></div>
+<div id="selected" tabindex="0"></div>
 <div id="list">
     <slot></slot>
 </div>
@@ -55,7 +53,6 @@ customSelectTemplate.innerHTML = `
 
 export class CustomSelectElement extends HTMLElement {
     #value = "";
-
     #clickOutsideController = new AbortController();
 
     constructor() {
@@ -76,6 +73,14 @@ export class CustomSelectElement extends HTMLElement {
             .getElementById("selected")
             .addEventListener("click", (e) => {
                 this.open();
+            });
+
+        this.shadowRoot
+            .getElementById("selected")
+            .addEventListener("keydown", (e) => {
+                if (e.key == "Enter" || e.key == " ") {
+                    this.open();
+                }
             });
 
         this.shadowRoot.addEventListener("slotchange", (e) => {
@@ -108,8 +113,14 @@ export class CustomSelectElement extends HTMLElement {
         this.toggleAttribute("open", force);
         if (this.hasAttribute("open")) {
             this.#attachClickOutside();
+            this.querySelectorAll("x-option").forEach((option) => {
+                option.tabIndex = 0;
+            });
         } else {
             this.#attachClickOutside(true);
+            this.querySelectorAll("x-option").forEach((option) => {
+                option.removeAttribute("tabIndex");
+            });
         }
     }
 
@@ -122,6 +133,7 @@ export class CustomSelectElement extends HTMLElement {
 
         /**@type {CustomOptionElement} */ //@ts-ignore
         let optionClone = e.target.cloneNode(true);
+        optionClone.removeAttribute("tabindex");
         e.target.toggleAttribute("selected", true);
 
         this.querySelectorAll("x-option").forEach((option) => {
@@ -204,6 +216,8 @@ customOptionTemplate.innerHTML = `
         user-select: none;
         -webkit-user-select: none;
         width: 100%;
+
+        background-color: #fff;
     }
 </style>
 <slot></slot>
@@ -218,8 +232,6 @@ export class CustomOptionElement extends HTMLElement {
 
         this.shadowRoot.append(customOptionTemplate.content.cloneNode(true));
 
-        this.#attachListeners();
-
         let valueAttr = this.getAttribute("value");
 
         this.#value = valueAttr || this.textContent;
@@ -227,10 +239,17 @@ export class CustomOptionElement extends HTMLElement {
         if (this.hasAttribute("selected")) {
             this.select();
         }
+
+        this.#attachListeners();
     }
 
     #attachListeners() {
         this.addEventListener("click", this.#clickHandler.bind(this));
+        this.addEventListener("keydown", (e) => {
+            if (e.key == "Enter" || e.key == " ") {
+                this.select();
+            }
+        });
     }
 
     /**@param {MouseEvent} e */
