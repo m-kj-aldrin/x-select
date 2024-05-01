@@ -1,4 +1,4 @@
-import { CustomOptionElement, CustomSelectElement } from "./x-select";
+import { CustomOptionElement, CustomSelectElement } from "./x-select/x-select";
 
 declare global {
     interface HTMLElementTagNameMap {
