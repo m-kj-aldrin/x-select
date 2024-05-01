@@ -27,6 +27,10 @@ customSelectTemplate.innerHTML = `
         border: 1px currentColor solid;
         padding: 4px;
     }
+    #selected:focus{
+        outline: 1px currentColor solid;
+        outline-offset: 1px;
+    }
     #list{
         padding: 4px;
         margin-top: 4px;
@@ -87,12 +91,13 @@ export class CustomSelectElement extends HTMLElement {
             let options = [...this.querySelectorAll("x-option")];
 
             let minLength = options.reduce((prev, curr) => {
-                return Math.max(prev, curr.textContent.length);
+                let box = curr.getBoundingClientRect();
+                return Math.max(prev, box.width);
             }, 0);
 
             this.shadowRoot.getElementById(
                 "selected"
-            ).style.minWidth = `${minLength}ch`;
+            ).style.minWidth = `${minLength}px`;
 
             let noSelected = options.every(
                 (option) => !option.hasAttribute("selected")
@@ -113,11 +118,22 @@ export class CustomSelectElement extends HTMLElement {
         this.toggleAttribute("open", force);
         if (this.hasAttribute("open")) {
             this.#attachClickOutside();
-            this.querySelectorAll("x-option").forEach((option) => {
-                option.tabIndex = 0;
-            });
+            this.#toggleTabIndex(true);
         } else {
             this.#attachClickOutside(true);
+            this.#toggleTabIndex(false);
+        }
+    }
+
+    /**@param {boolean} state */
+    #toggleTabIndex(state) {
+        if (state) {
+            this.querySelectorAll("x-option:not([selected])").forEach(
+                (option) => {
+                    option.tabIndex = 0;
+                }
+            );
+        } else {
             this.querySelectorAll("x-option").forEach((option) => {
                 option.removeAttribute("tabIndex");
             });
@@ -134,6 +150,7 @@ export class CustomSelectElement extends HTMLElement {
         /**@type {CustomOptionElement} */ //@ts-ignore
         let optionClone = e.target.cloneNode(true);
         optionClone.removeAttribute("tabindex");
+
         e.target.toggleAttribute("selected", true);
 
         this.querySelectorAll("x-option").forEach((option) => {
@@ -218,6 +235,13 @@ customOptionTemplate.innerHTML = `
         width: 100%;
 
         background-color: #fff;
+        max-width: 16ch;
+
+        white-space: wrap;
+    }
+    :host(:focus){
+        outline: 1px currentColor solid;
+        outline-offset: 1px;
     }
 </style>
 <slot></slot>
@@ -246,6 +270,7 @@ export class CustomOptionElement extends HTMLElement {
     #attachListeners() {
         this.addEventListener("click", this.#clickHandler.bind(this));
         this.addEventListener("keydown", (e) => {
+            if (this.hasAttribute("selected")) return;
             if (e.key == "Enter" || e.key == " ") {
                 this.select();
             }
